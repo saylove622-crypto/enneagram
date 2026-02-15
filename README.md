@@ -30,6 +30,19 @@
 * **PC 모드**: 좌측 3D 씬과 우측 상세 정보 패널이 공존하는 와이드 스플릿 뷰.
 * **Mobile 모드**: 전체 화면 3D 뷰와 하단 슬라이드업 정보 패널.
 
+### **5. Update 2.0: Deep Data Dive (2025)**
+데이터 저널리즘과 심층 심리학의 만남. 학술적 근거에 기반한 시각화 기능을 대폭 강화했습니다.
+* **Data Journal Mode**: 
+  - 3D 선형 배치(Linear Layout)로 전환하여 통계 데이터를 직관적으로 비교.
+  - **Triple Bar Chart**: 인구 분포(중앙), 분열도(좌측/적색), 통합도(우측/청색)를 동시에 시각화.
+  - **Global / Korean**: 전 세계(n=189,957)와 한국(n=414) 데이터 비교 토글.
+* **Mistakable Isolation**: 
+  - 혼동 유형(Mistakable Types) 선택 시, 관련 없는 유형을 그레이스케일로 처리하여 시각적 집중도 향상.
+* **Academic Data Integration**:
+  - **Hur & Lee (2011)**: 스트레스 반응 및 발달 수준(Levels of Development) 통계.
+  - **ZipDo (2025)**: 직업군별 유형 분포 경향성.
+  - **Ramos-Vera (2022)**: 네트워크 분석 기반 유형 간 연결성 데이터.
+
 ---
 
 ## 🛠 Tech Stack

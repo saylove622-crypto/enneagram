@@ -6,13 +6,17 @@ import '../../ux-design/styles/App.css';
 
 export default function App() {
   const [selectedId, setSelectedId] = useState(null);
+  const [activeMode, setActiveMode] = useState(null); // 'GROWTH', 'STRESS', 'MISTAKABLE', 'JOURNAL'
+  const [journalCategory, setJournalCategory] = useState('GLOBAL'); // 'GLOBAL' | 'KOREAN'
 
   const handleSelectNode = useCallback((id) => {
     setSelectedId(id);
+    setActiveMode(null); // Reset mode when selecting a new node
   }, []);
 
   const handleClose = useCallback(() => {
     setSelectedId(null);
+    // Don't reset activeMode — allow global mode to persist
   }, []);
 
   return (
@@ -31,6 +35,8 @@ export default function App() {
           <EnneagramScene
             selectedId={selectedId}
             onSelectNode={handleSelectNode}
+            activeMode={activeMode}
+            journalCategory={journalCategory}
           />
         </Canvas>
 
@@ -50,8 +56,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* Instruction (shown when no node selected) */}
-        {!selectedId && (
+        {/* Instruction (shown when no node selected and no global mode) */}
+        {!selectedId && !activeMode && (
           <div className="instruction-overlay">
             <p>Click a node to explore</p>
           </div>
@@ -59,7 +65,15 @@ export default function App() {
       </div>
 
       {/* Right: Info Panel */}
-      <InfoPanel selectedId={selectedId} onClose={handleClose} />
+      <InfoPanel
+        selectedId={selectedId}
+        onClose={handleClose}
+        activeMode={activeMode}
+        onModeChange={setActiveMode}
+        journalCategory={journalCategory}
+        onJournalCategoryChange={setJournalCategory}
+      />
     </div>
   );
 }
+

@@ -6,7 +6,7 @@ import ParticlePath from '../../ux-design/components/ParticlePath';
 import BackgroundParticles from '../../ux-design/components/BackgroundParticles';
 import { ENNEAGRAM_DATA } from '../data/enneagramData';
 
-export default function EnneagramScene({ selectedId, onSelectNode }) {
+export default function EnneagramScene({ selectedId, onSelectNode, activeMode, journalCategory = 'GLOBAL' }) {
 
     // Generate all paths from data
     const paths = useMemo(() => {
@@ -17,14 +17,14 @@ export default function EnneagramScene({ selectedId, onSelectNode }) {
                 fromId: node.id,
                 toId: node.growthTo,
                 pathType: 'growth',
-                intensity: node.intensity
+                intensity: node.stressIntensity
             });
             result.push({
                 key: `stress-${node.id}-${node.stressTo}`,
                 fromId: node.id,
                 toId: node.stressTo,
                 pathType: 'stress',
-                intensity: node.intensity
+                intensity: node.stressIntensity
             });
         });
         return result;
@@ -38,14 +38,66 @@ export default function EnneagramScene({ selectedId, onSelectNode }) {
         return new Set([selected.growthTo, selected.stressTo, selectedId]);
     }, [selectedId]);
 
-    const isPathActive = useCallback((fromId, toId) => {
-        if (!selectedId) return false;
-        return fromId === selectedId || toId === selectedId;
-    }, [selectedId]);
+    // Mistakable isolation: which nodes should NOT be dimmed
+    const mistakableRelevantIds = useMemo(() => {
+        if (activeMode !== 'MISTAKABLE' || !selectedId) return null;
+        const selected = ENNEAGRAM_DATA.find(n => n.id === selectedId);
+        if (!selected) return null;
+        return new Set([selectedId, ...(selected.mistakableTypes || [])]);
+    }, [activeMode, selectedId]);
+
+    // Journal mode: calculate linear positions and stats for each node
+    const journalNodeData = useMemo(() => {
+        if (activeMode !== 'JOURNAL') return null;
+        const spacing = 1.8; // distance between nodes in line
+        const totalWidth = (ENNEAGRAM_DATA.length - 1) * spacing;
+        const startX = -totalWidth / 2;
+
+        return ENNEAGRAM_DATA.map((node, index) => {
+            const stat = journalCategory === 'KOREAN' ? node.distribution.korean : node.distribution.ep;
+            const maxStat = journalCategory === 'KOREAN' ? 35 : 20;
+            const normalizedStat = stat / maxStat;
+
+            // Stress dynamics data for dual bar visualization
+            const sd = node.stressDynamics || {};
+            const disNorm = (sd.disintegration || 0) / 100;
+            const intNorm = (sd.integration || 0) / 100;
+
+            return {
+                id: node.id,
+                targetPosition: [startX + index * spacing, 0, 0],
+                journalScale: 0.6 + normalizedStat * 1.2,
+                barHeight: normalizedStat * 4,
+                stat: stat,
+                // Stress dynamics for dual bars
+                stressBarHeight: disNorm * 3.5,
+                integrationBarHeight: intNorm * 3.5,
+                stressRatio: sd.ratio || 0,
+            };
+        });
+    }, [activeMode, journalCategory]);
+
+    const isPathActive = useCallback((fromId, toId, pathType) => {
+        // Global mode: light up ALL paths of the active type
+        if (!selectedId && activeMode === 'GROWTH' && pathType === 'growth') return true;
+        if (!selectedId && activeMode === 'STRESS' && pathType === 'stress') return true;
+
+        // Node-specific mode
+        if (selectedId) {
+            if (activeMode === 'GROWTH' && pathType === 'growth' && fromId === selectedId) return true;
+            if (activeMode === 'STRESS' && pathType === 'stress' && fromId === selectedId) return true;
+            return fromId === selectedId || toId === selectedId;
+        }
+
+        return false;
+    }, [selectedId, activeMode]);
 
     const handleSelect = useCallback((id) => {
         onSelectNode(id === selectedId ? null : id);
     }, [selectedId, onSelectNode]);
+
+    // Should we hide particle paths in journal mode?
+    const hidePathsInJournal = activeMode === 'JOURNAL';
 
     return (
         <>
@@ -67,36 +119,53 @@ export default function EnneagramScene({ selectedId, onSelectNode }) {
                 <meshBasicMaterial
                     color="#1a1a2e"
                     transparent
-                    opacity={0.1}
+                    opacity={hidePathsInJournal ? 0.0 : 0.1}
                     side={2}
                     depthWrite={false}
                 />
             </mesh>
 
-            {/* Particle paths */}
-            {paths.map(path => (
+            {/* Particle paths — hidden in Journal mode */}
+            {!hidePathsInJournal && paths.map(path => (
                 <ParticlePath
                     key={path.key}
                     fromId={path.fromId}
                     toId={path.toId}
                     pathType={path.pathType}
                     intensity={path.intensity}
-                    isActive={isPathActive(path.fromId, path.toId)}
+                    isActive={isPathActive(path.fromId, path.toId, path.pathType)}
                     isVisible={true}
                 />
             ))}
 
             {/* Enneagram nodes */}
-            {ENNEAGRAM_DATA.map(node => (
-                <EnneagramNode
-                    key={node.id}
-                    data={node}
-                    isSelected={selectedId === node.id}
-                    isConnected={connectedNodeIds.has(node.id)}
-                    hasSelection={selectedId !== null}
-                    onSelect={handleSelect}
-                />
-            ))}
+            {ENNEAGRAM_DATA.map(node => {
+                const jData = journalNodeData?.find(d => d.id === node.id);
+                const isMistakableDimmed = mistakableRelevantIds
+                    ? !mistakableRelevantIds.has(node.id)
+                    : false;
+
+                return (
+                    <EnneagramNode
+                        key={node.id}
+                        data={node}
+                        isSelected={selectedId === node.id}
+                        isConnected={connectedNodeIds.has(node.id)}
+                        hasSelection={selectedId !== null}
+                        onSelect={handleSelect}
+                        // Journal mode props
+                        targetPosition={jData?.targetPosition || null}
+                        journalScale={jData?.journalScale || null}
+                        barHeight={jData?.barHeight || 0}
+                        barStat={jData?.stat || null}
+                        stressBarHeight={jData?.stressBarHeight || 0}
+                        integrationBarHeight={jData?.integrationBarHeight || 0}
+                        isJournalMode={activeMode === 'JOURNAL'}
+                        // Mistakable isolation
+                        isMistakableDimmed={isMistakableDimmed}
+                    />
+                );
+            })}
 
             {/* Post processing - Restored strong Bloom for neon vibe */}
             <EffectComposer>
